@@ -12,22 +12,44 @@ const port = process.env.PORT || 8000;
 app.use(cors());
 app.use(express.json());
 
-//connect to the database
-connectDB();
+// Start app: connect DB, optionally seed sample users, then attach routes and listen
+async function startServer() {
+  try {
+    // connect to the database
+    await connectDB();
 
-//routes
-app.use("/api/users", userRoutes);
+    // seed sample users in non-production environments
+    if (process.env.NODE_ENV !== "production") {
+      try {
+        const User = require("./models/user");
+        if (User && typeof User.insertSampleUsers === "function") {
+          await User.insertSampleUsers();
+        }
+      } catch (seedErr) {
+        console.error("Seeding sample users failed:", seedErr);
+      }
+    }
 
-app.use("/api/products", (req, res) => {
-  return res.status(200).json({
-    message: "This is new feature change, a new route for products samin",
-  });
-});
+    //routes
+    app.use("/api/users", userRoutes);
 
-//error handler
-app.use(errorHandler);
+    app.use("/api/products", (req, res) => {
+      return res.status(200).json({
+        message: "This is new feature change, a new route for products samin",
+      });
+    });
 
-//listen to the server
-app.listen(port, () => {
-  console.log(`Server is running on port: ${port}`);
-});
+    //error handler
+    app.use(errorHandler);
+
+    //listen to the server
+    app.listen(port, () => {
+      console.log(`Server is running on port: ${port}`);
+    });
+  } catch (err) {
+    console.error("Failed to start server:", err);
+    process.exit(1);
+  }
+}
+
+startServer();
